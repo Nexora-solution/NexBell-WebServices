@@ -1,0 +1,18 @@
+package com.nexora.nexora_web_service.intercom.interfaces.rest.resources;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+import java.time.LocalDateTime;
+
+public record CreatePreRegisteredVisitResource(
+    @Schema(description = "Resident profile ID", example = "1")
+    @NotNull Long residentId,
+    @Schema(description = "Visitor full name", example = "Patricia Ruiz")
+    @NotBlank String visitorName,
+    @Schema(description = "Visitor document number", example = "72938401")
+    String visitorDocument,
+    @Schema(description = "Expected date and time of the visit", example = "2026-06-10T15:00:00")
+    @NotNull LocalDateTime expectedAt
+) {}

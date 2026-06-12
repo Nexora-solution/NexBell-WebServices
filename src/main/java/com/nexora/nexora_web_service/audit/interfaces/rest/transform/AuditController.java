@@ -7,6 +7,9 @@ import com.nexora.nexora_web_service.audit.domain.services.AuditCommandService;
 import com.nexora.nexora_web_service.audit.domain.services.AuditQueryService;
 import com.nexora.nexora_web_service.audit.interfaces.rest.resources.AccessRecordResource;
 import com.nexora.nexora_web_service.audit.interfaces.rest.resources.RegisterAccessRecordResource;
+import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.ApartmentRepository;
+import com.nexora.nexora_web_service.intercom.infrastructure.persistence.jpa.repositories.VisitRequestRepository;
+import com.nexora.nexora_web_service.intercom.infrastructure.persistence.jpa.repositories.PreRegisteredVisitRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -23,10 +26,20 @@ public class AuditController {
 
     private final AuditCommandService commandService;
     private final AuditQueryService queryService;
+    private final VisitRequestRepository visitRequestRepository;
+    private final ApartmentRepository apartmentRepository;
+    private final PreRegisteredVisitRepository preRegisteredVisitRepository;
 
-    public AuditController(AuditCommandService commandService, AuditQueryService queryService) {
+    public AuditController(AuditCommandService commandService,
+                           AuditQueryService queryService,
+                           VisitRequestRepository visitRequestRepository,
+                           ApartmentRepository apartmentRepository,
+                           PreRegisteredVisitRepository preRegisteredVisitRepository) {
         this.commandService = commandService;
         this.queryService = queryService;
+        this.visitRequestRepository = visitRequestRepository;
+        this.apartmentRepository = apartmentRepository;
+        this.preRegisteredVisitRepository = preRegisteredVisitRepository;
     }
 
     @PostMapping("/access-records")
@@ -51,13 +64,43 @@ public class AuditController {
         var timeline = record.getTimeline().stream()
                 .map(entry -> entry.getTimestamp() + " - " + entry.getEventDescription())
                 .collect(Collectors.toList());
+
+        String visitorName = "Unknown";
+        String apartmentCode = "—";
+        String type = "walk-in";
+
+        try {
+            Long visitRequestId = Long.parseLong(record.getCorrelationId().correlationId());
+            var request = visitRequestRepository.findById(visitRequestId).orElse(null);
+            if (request != null) {
+                visitorName = request.getVisitorName();
+                var apartmentOpt = apartmentRepository.findById(request.getApartmentId());
+                if (apartmentOpt.isPresent()) {
+                    apartmentCode = apartmentOpt.get().getCode().code();
+                }
+
+                var preRegs = preRegisteredVisitRepository.findAll();
+                for (var pr : preRegs) {
+                    if (pr.isActive() && pr.getVisitorName().equalsIgnoreCase(visitorName)) {
+                        type = "pre-registered";
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // fallback
+        }
+
         return new AccessRecordResource(
                 record.getId(),
                 record.getCorrelationId().correlationId(),
                 record.getDecision(),
                 record.isSealed(),
                 timeline,
-                record.getCreatedAt()
+                record.getCreatedAt(),
+                visitorName,
+                apartmentCode,
+                type
         );
     }
 }

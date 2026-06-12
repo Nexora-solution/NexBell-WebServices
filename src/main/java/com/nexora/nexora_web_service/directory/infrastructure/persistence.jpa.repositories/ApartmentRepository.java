@@ -10,4 +10,5 @@ import java.util.Optional;
 @Repository
 public interface ApartmentRepository extends JpaRepository<Apartment, Long> {
     Optional<Apartment> findByCode(ApartmentCode code);
+    Optional<Apartment> findByResidentId(Long residentId);
 }

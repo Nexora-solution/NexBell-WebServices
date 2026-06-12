@@ -14,15 +14,33 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.BuildingDirectoryRepository;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/directory/buildings")
 @Tag(name = "Buildings", description = "Building directory administration")
 public class BuildingsController {
 
     private final DirectoryCommandService directoryCommandService;
+    private final BuildingDirectoryRepository buildingDirectoryRepository;
 
-    public BuildingsController(DirectoryCommandService directoryCommandService) {
+    public BuildingsController(DirectoryCommandService directoryCommandService,
+                               BuildingDirectoryRepository buildingDirectoryRepository) {
         this.directoryCommandService = directoryCommandService;
+        this.buildingDirectoryRepository = buildingDirectoryRepository;
+    }
+
+    @GetMapping
+    @Operation(summary = "List all registered buildings in the directory")
+    public ResponseEntity<List<BuildingDirectory>> getAllBuildings() {
+        return ResponseEntity.ok(buildingDirectoryRepository.findAll());
     }
 
     @PostMapping

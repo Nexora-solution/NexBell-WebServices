@@ -46,8 +46,8 @@ public class DirectoryCommandServiceImpl implements DirectoryCommandService {
             throw new IllegalArgumentException("Building not found");
         }
         var code = new ApartmentCode(command.code());
-        if (apartmentRepository.findByCode(code).isPresent()) {
-            throw new IllegalArgumentException("Apartment with code already exists");
+        if (apartmentRepository.findByBuildingIdAndCode(command.buildingId(), code).isPresent()) {
+            throw new IllegalArgumentException("Apartment with code already exists in this building");
         }
         var apartment = new Apartment(command.buildingId(), code);
         return Optional.of(apartmentRepository.save(apartment));

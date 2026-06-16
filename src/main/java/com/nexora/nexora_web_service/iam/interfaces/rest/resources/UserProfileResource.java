@@ -6,5 +6,7 @@ public record UserProfileResource(
         String fullName,
         String role,
         String avatar,
-        Long apartmentId
+        Long apartmentId,
+        Long buildingId,
+        Long residentId
 ) {}

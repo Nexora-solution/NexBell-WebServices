@@ -46,12 +46,19 @@ public class AuthController {
     @PostMapping("/register")
     @Operation(summary = "Register a new user account")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterUserResource resource) {
-        var command = new RegisterUserCommand(resource.email(), resource.password(), resource.role());
-        var accountOpt = userAccountCommandService.handle(command);
-        if (accountOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to register user");
+        try {
+            var command = new RegisterUserCommand(resource.email(), resource.password(), resource.role());
+            var accountOpt = userAccountCommandService.handle(command);
+            if (accountOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to register user");
+            }
+            return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully");
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && e.getMessage().contains("already exists")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully");
     }
 
     @PostMapping("/login")

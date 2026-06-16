@@ -5,6 +5,7 @@ import com.nexora.nexora_web_service.audit.domain.model.entities.AccessRecord;
 import com.nexora.nexora_web_service.audit.domain.model.queries.GetAccessRecordByIdQuery;
 import com.nexora.nexora_web_service.audit.domain.services.AuditCommandService;
 import com.nexora.nexora_web_service.audit.domain.services.AuditQueryService;
+import com.nexora.nexora_web_service.audit.infrastructure.persistence.jpa.repositories.AccessRecordRepository;
 import com.nexora.nexora_web_service.audit.interfaces.rest.resources.AccessRecordResource;
 import com.nexora.nexora_web_service.audit.interfaces.rest.resources.RegisterAccessRecordResource;
 import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.ApartmentRepository;
@@ -26,17 +27,20 @@ public class AuditController {
 
     private final AuditCommandService commandService;
     private final AuditQueryService queryService;
+    private final AccessRecordRepository accessRecordRepository;
     private final VisitRequestRepository visitRequestRepository;
     private final ApartmentRepository apartmentRepository;
     private final PreRegisteredVisitRepository preRegisteredVisitRepository;
 
     public AuditController(AuditCommandService commandService,
                            AuditQueryService queryService,
+                           AccessRecordRepository accessRecordRepository,
                            VisitRequestRepository visitRequestRepository,
                            ApartmentRepository apartmentRepository,
                            PreRegisteredVisitRepository preRegisteredVisitRepository) {
         this.commandService = commandService;
         this.queryService = queryService;
+        this.accessRecordRepository = accessRecordRepository;
         this.visitRequestRepository = visitRequestRepository;
         this.apartmentRepository = apartmentRepository;
         this.preRegisteredVisitRepository = preRegisteredVisitRepository;
@@ -49,6 +53,14 @@ public class AuditController {
         var recordOpt = commandService.handle(command);
         return recordOpt.map(record -> ResponseEntity.status(HttpStatus.CREATED).body(toResource(record)))
                 .orElseGet(() -> ResponseEntity.badRequest().build());
+    }
+
+    @DeleteMapping("/access-records/{id}")
+    @Operation(summary = "Delete an access record by its ID")
+    public ResponseEntity<Void> deleteAccessRecord(@PathVariable Long id) {
+        if (!accessRecordRepository.existsById(id)) return ResponseEntity.notFound().build();
+        accessRecordRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/access-records/{id}")

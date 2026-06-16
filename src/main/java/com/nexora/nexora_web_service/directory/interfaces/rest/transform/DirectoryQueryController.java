@@ -43,14 +43,20 @@ public class DirectoryQueryController {
                 profile.getFullName(),
                 profile.getDocument().documentNumber(),
                 profile.getContact().email(),
-                profile.getContact().phone()
+                profile.getContact().phone(),
+                null
         ))).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/resident")
-    @Operation(summary = "Resolve the resident profile associated to an apartment code")
-    public ResponseEntity<ResidentProfileResource> getResidentByApartmentCode(@RequestParam String code) {
-        var apartmentOpt = apartmentRepository.findByCode(new ApartmentCode(code));
+    @Operation(summary = "Resolve the resident profile associated to an apartment code, optionally filtered by building")
+    public ResponseEntity<ResidentProfileResource> getResidentByApartmentCode(
+            @RequestParam String code,
+            @RequestParam(required = false) Long buildingId) {
+        var code_ = new ApartmentCode(code);
+        var apartmentOpt = buildingId != null
+                ? apartmentRepository.findByBuildingIdAndCode(buildingId, code_)
+                : apartmentRepository.findByCode(code_);
         if (apartmentOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -65,7 +71,8 @@ public class DirectoryQueryController {
                 profile.getFullName(),
                 profile.getDocument().documentNumber(),
                 profile.getContact().email(),
-                profile.getContact().phone()
+                profile.getContact().phone(),
+                apartment.getCode().code()
         ))).orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface PreRegisteredVisitRepository extends JpaRepository<PreRegisteredVisit, Long> {
     List<PreRegisteredVisit> findByResidentIdAndIsActiveTrue(Long residentId);
+    List<PreRegisteredVisit> findAllByOrderByCreatedAtDesc();
 }

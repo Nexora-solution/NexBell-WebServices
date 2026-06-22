@@ -31,6 +31,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 
+import com.nexora.nexora_web_service.intercom.infrastructure.mqtt.MqttVideoSubscriber;
+import jakarta.servlet.http.HttpServletResponse;
+
 @RestController
 @RequestMapping("/api/intercom")
 @Tag(name = "Intercom Queue", description = "Operational queue administration for doormen")
@@ -42,15 +45,18 @@ public class IntercomQueueController {
     private final VisitRequestRepository visitRequestRepository;
     private final ApartmentRepository apartmentRepository;
     private final PreRegisteredVisitRepository preRegisteredVisitRepository;
+    private final MqttVideoSubscriber mqttVideoSubscriber;
 
     public IntercomQueueController(IntercomQueryService queryService,
                                    VisitRequestRepository visitRequestRepository,
                                    ApartmentRepository apartmentRepository,
-                                   PreRegisteredVisitRepository preRegisteredVisitRepository) {
+                                   PreRegisteredVisitRepository preRegisteredVisitRepository,
+                                   MqttVideoSubscriber mqttVideoSubscriber) {
         this.queryService = queryService;
         this.visitRequestRepository = visitRequestRepository;
         this.apartmentRepository = apartmentRepository;
         this.preRegisteredVisitRepository = preRegisteredVisitRepository;
+        this.mqttVideoSubscriber = mqttVideoSubscriber;
     }
 
     @GetMapping("/queue/pending")
@@ -113,11 +119,34 @@ public class IntercomQueueController {
     public ResponseEntity<VisitStreamResource> getVisitStream(@PathVariable Long id) {
         var streamInfo = new VisitStreamResource(
                 id,
-                "rtsp://10.0.2.2:554/live/stream-" + id,
-                "RTSP",
-                "rtc-session-token-for-request-" + id
+                "/api/intercom/video-stream",
+                "HTTP_MJPEG",
+                "stream-" + id
         );
         return ResponseEntity.ok(streamInfo);
+    }
+
+    @GetMapping("/video-stream")
+    @Operation(summary = "Get the actual MJPEG continuous video stream")
+    public void getMjpegStream(HttpServletResponse response) {
+        response.setContentType("multipart/x-mixed-replace; boundary=frame");
+        try {
+            var out = response.getOutputStream();
+            while (true) {
+                byte[] frame = mqttVideoSubscriber.getLatestFrame();
+                if (frame != null && frame.length > 0) {
+                    out.write(("--frame\r\n").getBytes());
+                    out.write(("Content-Type: image/jpeg\r\n").getBytes());
+                    out.write(("Content-Length: " + frame.length + "\r\n\r\n").getBytes());
+                    out.write(frame);
+                    out.write(("\r\n").getBytes());
+                    out.flush();
+                }
+                Thread.sleep(50); // Target ~20 FPS
+            }
+        } catch (Exception e) {
+            log.info("Video stream client disconnected.");
+        }
     }
 
     @GetMapping("/visit-requests/{id}")

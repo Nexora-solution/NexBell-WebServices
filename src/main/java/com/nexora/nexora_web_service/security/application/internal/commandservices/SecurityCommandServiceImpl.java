@@ -96,7 +96,8 @@ public class SecurityCommandServiceImpl implements SecurityCommandService {
 
     @Override
     public Optional<SecurityAlarm> handle(TriggerTamperingAlarmCommand command) {
-        var alarm = new SecurityAlarm(SensorType.SW420_VIBRATION);
+        SensorType type = SensorType.valueOf(command.sensorType());
+        var alarm = new SecurityAlarm(type);
         return Optional.of(alarmRepository.save(alarm));
     }
 

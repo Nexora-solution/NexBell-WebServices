@@ -27,8 +27,11 @@ public class MqttVideoSubscriber implements MqttCallback {
     private static final String TOPIC = "nexbell/telemetry/video";
     private static final String CLIENT_ID = "NexBell_Cloud_Backend_" + System.currentTimeMillis();
 
+    private static final long LIVE_THRESHOLD_MS = 5000;
+
     private MqttClient mqttClient;
     private volatile byte[] latestFrame = null;
+    private volatile long lastFrameAt = 0;
 
     @PostConstruct
     public void init() {
@@ -73,6 +76,7 @@ public class MqttVideoSubscriber implements MqttCallback {
         if (TOPIC.equals(topic)) {
             // Store the raw binary JPEG frame
             latestFrame = message.getPayload();
+            lastFrameAt = System.currentTimeMillis();
         }
     }
 
@@ -86,5 +90,10 @@ public class MqttVideoSubscriber implements MqttCallback {
      */
     public byte[] getLatestFrame() {
         return latestFrame;
+    }
+
+    /** True if a video frame arrived within the last LIVE_THRESHOLD_MS milliseconds. */
+    public boolean isLive() {
+        return latestFrame != null && (System.currentTimeMillis() - lastFrameAt) <= LIVE_THRESHOLD_MS;
     }
 }

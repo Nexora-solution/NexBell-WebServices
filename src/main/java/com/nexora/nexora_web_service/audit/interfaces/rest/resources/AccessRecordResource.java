@@ -10,5 +10,8 @@ public record AccessRecordResource(
     AccessDecision decision,
     boolean isSealed,
     List<String> timeline,
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+    String visitorName,
+    String apartmentCode,
+    String type
 ) {}

@@ -7,6 +7,9 @@ import com.nexora.nexora_web_service.audit.domain.model.queries.GetHardwareLogsQ
 import com.nexora.nexora_web_service.audit.domain.model.queries.SearchAccessRecordsQuery;
 import com.nexora.nexora_web_service.audit.domain.services.AuditQueryService;
 import com.nexora.nexora_web_service.audit.interfaces.rest.resources.AccessRecordResource;
+import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.ApartmentRepository;
+import com.nexora.nexora_web_service.intercom.infrastructure.persistence.jpa.repositories.VisitRequestRepository;
+import com.nexora.nexora_web_service.intercom.infrastructure.persistence.jpa.repositories.PreRegisteredVisitRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -24,9 +27,18 @@ import java.util.stream.Collectors;
 public class AuditQueryController {
 
     private final AuditQueryService queryService;
+    private final VisitRequestRepository visitRequestRepository;
+    private final ApartmentRepository apartmentRepository;
+    private final PreRegisteredVisitRepository preRegisteredVisitRepository;
 
-    public AuditQueryController(AuditQueryService queryService) {
+    public AuditQueryController(AuditQueryService queryService,
+                                VisitRequestRepository visitRequestRepository,
+                                ApartmentRepository apartmentRepository,
+                                PreRegisteredVisitRepository preRegisteredVisitRepository) {
         this.queryService = queryService;
+        this.visitRequestRepository = visitRequestRepository;
+        this.apartmentRepository = apartmentRepository;
+        this.preRegisteredVisitRepository = preRegisteredVisitRepository;
     }
 
     @GetMapping("/access-records")
@@ -59,13 +71,43 @@ public class AuditQueryController {
         var timeline = record.getTimeline().stream()
                 .map(entry -> entry.getTimestamp() + " - " + entry.getEventDescription())
                 .collect(Collectors.toList());
+
+        String visitorName = "Unknown";
+        String apartmentCode = "—";
+        String type = "walk-in";
+
+        try {
+            Long visitRequestId = Long.parseLong(record.getCorrelationId().correlationId());
+            var request = visitRequestRepository.findById(visitRequestId).orElse(null);
+            if (request != null) {
+                visitorName = request.getVisitorName();
+                var apartmentOpt = apartmentRepository.findById(request.getApartmentId());
+                if (apartmentOpt.isPresent()) {
+                    apartmentCode = apartmentOpt.get().getCode().code();
+                }
+
+                var preRegs = preRegisteredVisitRepository.findAll();
+                for (var pr : preRegs) {
+                    if (pr.isActive() && pr.getVisitorName().equalsIgnoreCase(visitorName)) {
+                        type = "pre-registered";
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // fallback
+        }
+
         return new AccessRecordResource(
                 record.getId(),
                 record.getCorrelationId().correlationId(),
                 record.getDecision(),
                 record.isSealed(),
                 timeline,
-                record.getCreatedAt()
+                record.getCreatedAt(),
+                visitorName,
+                apartmentCode,
+                type
         );
     }
 }

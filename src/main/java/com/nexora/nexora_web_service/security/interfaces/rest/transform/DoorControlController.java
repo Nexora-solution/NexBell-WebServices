@@ -7,6 +7,9 @@ import com.nexora.nexora_web_service.security.interfaces.rest.resources.DoorComm
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import com.nexora.nexora_web_service.security.infrastructure.persistence.jpa.repositories.DoorCommandRepository;
+import com.nexora.nexora_web_service.security.interfaces.rest.resources.DoorStatusResource;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,9 +20,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class DoorControlController {
 
     private final SecurityCommandService securityCommandService;
+    private final DoorCommandRepository doorCommandRepository;
 
-    public DoorControlController(SecurityCommandService securityCommandService) {
+    public DoorControlController(SecurityCommandService securityCommandService,
+                                 DoorCommandRepository doorCommandRepository) {
         this.securityCommandService = securityCommandService;
+        this.doorCommandRepository = doorCommandRepository;
+    }
+
+    @GetMapping("/status")
+    @Operation(summary = "Get the current lock status of the physical door")
+    public ResponseEntity<DoorStatusResource> getStatus() {
+        var latestOpt = doorCommandRepository.findFirstByOrderByIdDesc();
+        String status = "LOCKED";
+        if (latestOpt.isPresent()) {
+            if (latestOpt.get().getCommandType() == CommandType.UNLOCK) {
+                status = "UNLOCKED";
+            }
+        }
+        return ResponseEntity.ok(new DoorStatusResource(status, true));
     }
 
     @PostMapping("/unlock")

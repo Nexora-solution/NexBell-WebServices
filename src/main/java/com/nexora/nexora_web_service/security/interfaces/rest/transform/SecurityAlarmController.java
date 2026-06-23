@@ -22,10 +22,12 @@ public class SecurityAlarmController {
         this.securityCommandService = securityCommandService;
     }
 
+    public record TamperingRequest(String sensorType) {}
+
     @PostMapping("/tampering")
     @Operation(summary = "Signal a tampering/vibration alarm event from the physical door")
-    public ResponseEntity<SecurityAlarm> triggerTampering() {
-        var command = new TriggerTamperingAlarmCommand();
+    public ResponseEntity<SecurityAlarm> triggerTampering(@org.springframework.web.bind.annotation.RequestBody TamperingRequest request) {
+        var command = new TriggerTamperingAlarmCommand(request.sensorType());
         var alarmOpt = securityCommandService.handle(command);
         return alarmOpt.map(alarm -> ResponseEntity.status(HttpStatus.CREATED).body(alarm))
                 .orElseGet(() -> ResponseEntity.badRequest().build());

@@ -18,6 +18,12 @@ public class MqttVideoSubscriber implements MqttCallback {
     @Value("${mqtt.broker.url:tcp://localhost:1883}")
     private String brokerUrl;
 
+    @Value("${mqtt.broker.username:}")
+    private String brokerUsername;
+
+    @Value("${mqtt.broker.password:}")
+    private String brokerPassword;
+
     private static final String TOPIC = "nexbell/telemetry/video";
     private static final String CLIENT_ID = "NexBell_Cloud_Backend_" + System.currentTimeMillis();
 
@@ -32,6 +38,10 @@ public class MqttVideoSubscriber implements MqttCallback {
             options.setAutomaticReconnect(true);
             options.setCleanSession(true);
             options.setConnectionTimeout(10);
+            if (brokerUsername != null && !brokerUsername.isBlank()) {
+                options.setUserName(brokerUsername);
+                options.setPassword(brokerPassword.toCharArray());
+            }
 
             mqttClient.setCallback(this);
             mqttClient.connect(options);

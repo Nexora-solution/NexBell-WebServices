@@ -91,7 +91,9 @@ public class SecurityCommandServiceImpl implements SecurityCommandService {
         var device = deviceRepository.findByDeviceCode(command.deviceCode())
                 .orElseThrow(() -> new IllegalArgumentException("IoT Device not found"));
         device.toggleMedia(command.camera(), command.microphone());
-        return Optional.of(deviceRepository.save(device));
+        var saved = deviceRepository.save(device);
+        commandGateway.sendMediaToggle(command.camera(), command.microphone());
+        return Optional.of(saved);
     }
 
     @Override

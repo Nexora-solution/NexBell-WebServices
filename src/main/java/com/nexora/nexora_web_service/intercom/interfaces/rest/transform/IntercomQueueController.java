@@ -126,6 +126,12 @@ public class IntercomQueueController {
         return ResponseEntity.ok(streamInfo);
     }
 
+    @GetMapping("/video-stream/status")
+    @Operation(summary = "Check if the camera is actively streaming frames right now")
+    public ResponseEntity<java.util.Map<String, Boolean>> getVideoStreamStatus() {
+        return ResponseEntity.ok(java.util.Map.of("live", mqttVideoSubscriber.isLive()));
+    }
+
     @GetMapping("/video-stream")
     @Operation(summary = "Get the actual MJPEG continuous video stream")
     public void getMjpegStream(HttpServletResponse response) {

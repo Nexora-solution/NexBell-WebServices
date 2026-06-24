@@ -61,9 +61,9 @@ public class IntercomCommandServiceImpl implements IntercomCommandService {
         queueRepository.save(queueItem);
 
         var notification = new NotificationDispatch("SCHEDULED");
-        var residentEmailOpt = directoryService.fetchResidentEmailByApartment(command.apartmentId());
-        if (residentEmailOpt.isPresent()) {
-            boolean sent = notificationGateway.send(notification, residentEmailOpt.get());
+        var residentFcmTokenOpt = directoryService.fetchResidentFcmTokenByApartment(command.apartmentId());
+        if (residentFcmTokenOpt.isPresent()) {
+            boolean sent = notificationGateway.send(notification, residentFcmTokenOpt.get(), savedRequest.getId(), command.visitorName(), "VISIT_REQUEST");
             if (sent) {
                 notification.markSent();
                 notification.markDelivered();
@@ -71,6 +71,9 @@ public class IntercomCommandServiceImpl implements IntercomCommandService {
                 notification.markFailed();
             }
         } else {
+            // No FCM token registered for this resident's device — the visit still
+            // shows up in the doorman queue and the resident's in-app history,
+            // just without a push notification reaching their phone.
             notification.markFailed();
         }
 
@@ -127,7 +130,8 @@ public class IntercomCommandServiceImpl implements IntercomCommandService {
                 command.residentId(),
                 command.visitorName(),
                 command.visitorDocument(),
-                command.expectedAt()
+                command.expectedAt(),
+                command.registeredBy()
         );
         return Optional.of(preRegisteredVisitRepository.save(visit));
     }
@@ -146,6 +150,19 @@ public class IntercomCommandServiceImpl implements IntercomCommandService {
             visit.cancel();
             preRegisteredVisitRepository.save(visit);
         });
+    }
+
+    @Override
+    public Optional<PreRegisteredVisit> handle(RegisterPreRegisteredDecisionCommand command) {
+        var visit = preRegisteredVisitRepository.findById(command.preRegisteredVisitId())
+                .orElseThrow(() -> new IllegalArgumentException("Pre-registered visit not found"));
+
+        visit.registerDecision(command.decision().toUpperCase());
+        var savedVisit = preRegisteredVisitRepository.save(visit);
+
+        realtimeQueueGateway.publishPreRegisteredUpdate(savedVisit);
+
+        return Optional.of(savedVisit);
     }
 
     @Override

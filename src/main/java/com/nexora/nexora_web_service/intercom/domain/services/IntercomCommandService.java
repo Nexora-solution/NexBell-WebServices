@@ -14,4 +14,5 @@ public interface IntercomCommandService {
     Optional<PreRegisteredVisit> handle(UpdatePreRegisteredVisitCommand command);
     void handle(CancelPreRegisteredVisitCommand command);
     void handle(MarkNotificationAsReadCommand command);
+    Optional<PreRegisteredVisit> handle(RegisterPreRegisteredDecisionCommand command);
 }

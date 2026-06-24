@@ -26,16 +26,38 @@ public class PreRegisteredVisit extends AuditableModel {
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 
+    /** PENDING, APPROVED, REJECTED — the doorman/resident decision lifecycle for this pre-registered visit. */
+    @Column(name = "status", nullable = false)
+    private String status = "PENDING";
+
+    /**
+     * "RESIDENT" — the resident pre-registered this visitor themselves from
+     * the mobile app, so it belongs in the doorman's "pre-registered visits"
+     * sidebar while pending.
+     * "DOORMAN" — the doorman registered this on the fly for a walk-in
+     * visitor with no prior pre-registration. It's notified immediately and
+     * never shown in that sidebar — it only shows up in history once decided.
+     */
+    @Column(name = "registered_by", nullable = false)
+    private String registeredBy = "RESIDENT";
+
     public PreRegisteredVisit() {
         this.isActive = true;
+        this.status = "PENDING";
     }
 
     public PreRegisteredVisit(Long residentId, String visitorName, String visitorDocument, LocalDateTime expectedAt) {
+        this(residentId, visitorName, visitorDocument, expectedAt, "RESIDENT");
+    }
+
+    public PreRegisteredVisit(Long residentId, String visitorName, String visitorDocument, LocalDateTime expectedAt, String registeredBy) {
         this.residentId = residentId;
         this.visitorName = visitorName;
         this.visitorDocument = visitorDocument;
         this.expectedAt = expectedAt;
         this.isActive = true;
+        this.status = "PENDING";
+        this.registeredBy = registeredBy != null ? registeredBy : "RESIDENT";
     }
 
     public Long getResidentId() {
@@ -90,5 +112,17 @@ public class PreRegisteredVisit extends AuditableModel {
 
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(expectedAt);
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void registerDecision(String decision) {
+        this.status = decision; // "APPROVED" or "REJECTED"
+    }
+
+    public String getRegisteredBy() {
+        return registeredBy;
     }
 }

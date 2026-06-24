@@ -44,7 +44,8 @@ public class DirectoryQueryController {
                 profile.getDocument().documentNumber(),
                 profile.getContact().email(),
                 profile.getContact().phone(),
-                null
+                null,
+                id
         ))).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
@@ -72,7 +73,8 @@ public class DirectoryQueryController {
                 profile.getDocument().documentNumber(),
                 profile.getContact().email(),
                 profile.getContact().phone(),
-                apartment.getCode().code()
+                apartment.getCode().code(),
+                apartment.getId()
         ))).orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

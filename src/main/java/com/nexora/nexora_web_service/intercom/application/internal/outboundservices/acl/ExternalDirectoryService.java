@@ -22,6 +22,14 @@ public class ExternalDirectoryService {
         return directoryContextFacade.getResidentEmailByApartmentId(apartmentId);
     }
 
+    public Optional<String> fetchResidentFcmTokenByApartment(Long apartmentId) {
+        return directoryContextFacade.getResidentFcmTokenByApartmentId(apartmentId);
+    }
+
+    public Optional<String> fetchResidentFcmTokenById(Long residentId) {
+        return directoryContextFacade.getResidentFcmTokenById(residentId);
+    }
+
     public boolean existsApartment(Long apartmentId) {
         return directoryContextFacade.existsApartmentById(apartmentId);
     }

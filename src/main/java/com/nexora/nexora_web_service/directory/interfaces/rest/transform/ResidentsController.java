@@ -38,7 +38,9 @@ public class ResidentsController {
         if (profileOpt.isEmpty()) return ResponseEntity.notFound().build();
         var profile = profileOpt.get();
         var apts = apartmentRepository.findByResidentId(id);
-        String apartmentCode = apts.isEmpty() ? null : apts.get(apts.size() - 1).getCode().code();
+        var lastApt = apts.isEmpty() ? null : apts.get(apts.size() - 1);
+        String apartmentCode = lastApt == null ? null : lastApt.getCode().code();
+        Long apartmentId = lastApt == null ? null : lastApt.getId();
         return ResponseEntity.ok(new ResidentProfileResource(
                 profile.getId(),
                 profile.getUserId(),
@@ -46,7 +48,8 @@ public class ResidentsController {
                 profile.getDocument().documentNumber(),
                 profile.getContact().email(),
                 profile.getContact().phone(),
-                apartmentCode
+                apartmentCode,
+                apartmentId
         ));
     }
 

@@ -6,4 +6,5 @@ public interface IamContextFacade {
     boolean existsUserById(Long userId);
     boolean existsUserByEmail(String email);
     RoleName getUserRole(Long userId);
+    String getFcmToken(Long userId);
 }

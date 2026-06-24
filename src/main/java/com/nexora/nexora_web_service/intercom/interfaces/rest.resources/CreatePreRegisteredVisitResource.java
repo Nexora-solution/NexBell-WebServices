@@ -14,5 +14,7 @@ public record CreatePreRegisteredVisitResource(
     @Schema(description = "Visitor document number", example = "72938401")
     String visitorDocument,
     @Schema(description = "Expected date and time of the visit", example = "2026-06-10T15:00:00")
-    @NotNull LocalDateTime expectedAt
+    @NotNull LocalDateTime expectedAt,
+    @Schema(description = "Who registered this visit: RESIDENT (default, via mobile app) or DOORMAN (ad-hoc walk-in)", example = "RESIDENT")
+    String registeredBy
 ) {}

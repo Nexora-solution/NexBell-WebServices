@@ -1,5 +1,6 @@
 package com.nexora.nexora_web_service.intercom.infrastructure.gateway;
 
+import com.nexora.nexora_web_service.intercom.domain.model.entities.PreRegisteredVisit;
 import com.nexora.nexora_web_service.intercom.domain.model.entities.VisitRequest;
 import com.nexora.nexora_web_service.intercom.domain.services.RealtimeQueueGateway;
 import org.slf4j.Logger;
@@ -36,6 +37,25 @@ public class SignalRRealtimeQueueGateway implements RealtimeQueueGateway {
                     emitter.send(SseEmitter.event()
                             .name("queue-update")
                             .data(request));
+                } catch (IOException e) {
+                    deadEmitters.add(emitter);
+                }
+            }
+            emitters.removeAll(deadEmitters);
+        }
+    }
+
+    @Override
+    public void publishPreRegisteredUpdate(PreRegisteredVisit visit) {
+        log.info("Publishing real-time pre-registered visit update for ID '{}' (Status: '{}').", visit.getId(), visit.getStatus());
+
+        synchronized (emitters) {
+            List<SseEmitter> deadEmitters = new ArrayList<>();
+            for (var emitter : emitters) {
+                try {
+                    emitter.send(SseEmitter.event()
+                            .name("prereg-update")
+                            .data(visit));
                 } catch (IOException e) {
                     deadEmitters.add(emitter);
                 }

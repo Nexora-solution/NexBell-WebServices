@@ -29,6 +29,9 @@ public class UserAccount extends AuditableModel {
     @Column(nullable = false)
     private boolean isActive = true;
 
+    @Column(name = "fcm_token")
+    private String fcmToken;
+
     public UserAccount() {
         this.isActive = true;
     }
@@ -82,5 +85,13 @@ public class UserAccount extends AuditableModel {
 
     public void activate() {
         this.isActive = true;
+    }
+
+    public String getFcmToken() {
+        return fcmToken;
+    }
+
+    public void setFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
     }
 }

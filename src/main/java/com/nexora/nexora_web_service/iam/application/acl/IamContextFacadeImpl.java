@@ -48,4 +48,16 @@ public class IamContextFacadeImpl implements IamContextFacade {
             return null;
         }
     }
+
+    @Override
+    public String getFcmToken(Long userId) {
+        if (userId == null) return null;
+        try {
+            return userAccountQueryService.handle(new GetUserAccountByIdQuery(userId))
+                    .map(account -> account.getFcmToken())
+                    .orElse(null);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
 }

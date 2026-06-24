@@ -16,5 +16,7 @@ public record ResidentProfileResource(
     @Schema(description = "Contact phone number")
     String phone,
     @Schema(description = "Apartment code (only populated on GET /residents/{id})")
-    String apartmentCode
+    String apartmentCode,
+    @Schema(description = "ID of the apartment (needed to register a visit request)")
+    Long apartmentId
 ) {}

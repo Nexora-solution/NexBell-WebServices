@@ -5,6 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "iot_devices")
 public class IoTDevice extends AuditableModel {
@@ -21,10 +23,17 @@ public class IoTDevice extends AuditableModel {
     @Column(nullable = false)
     private String status = "ONLINE"; // ONLINE, OFFLINE
 
+    @Column(name = "door_state", nullable = false)
+    private String doorState = "CLOSED"; // OPEN, CLOSED — physical state read from the MC38 magnetic sensor
+
+    @Column(name = "door_state_changed_at")
+    private LocalDateTime doorStateChangedAt;
+
     public IoTDevice() {
         this.isCameraEnabled = true;
         this.isMicrophoneEnabled = true;
         this.status = "ONLINE";
+        this.doorState = "CLOSED";
     }
 
     public IoTDevice(String deviceCode) {
@@ -32,6 +41,7 @@ public class IoTDevice extends AuditableModel {
         this.isCameraEnabled = true;
         this.isMicrophoneEnabled = true;
         this.status = "ONLINE";
+        this.doorState = "CLOSED";
     }
 
     public String getDeviceCode() {
@@ -73,5 +83,29 @@ public class IoTDevice extends AuditableModel {
 
     public void updateStatus(String status) {
         this.status = status;
+    }
+
+    public String getDoorState() {
+        return doorState;
+    }
+
+    public LocalDateTime getDoorStateChangedAt() {
+        return doorStateChangedAt;
+    }
+
+    /**
+     * Updates the physical door state reported by the MC38 magnetic sensor.
+     * Only "OPEN" / "CLOSED" are accepted; the change timestamp is refreshed
+     * only when the state actually transitions.
+     */
+    public void updateDoorState(String newState) {
+        String normalized = newState == null ? "" : newState.trim().toUpperCase();
+        if (!normalized.equals("OPEN") && !normalized.equals("CLOSED")) {
+            throw new IllegalArgumentException("Door state must be OPEN or CLOSED");
+        }
+        if (!normalized.equals(this.doorState)) {
+            this.doorStateChangedAt = LocalDateTime.now();
+        }
+        this.doorState = normalized;
     }
 }

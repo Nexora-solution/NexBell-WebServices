@@ -13,4 +13,5 @@ public interface SecurityCommandService {
     Optional<IoTDevice> handle(ToggleDeviceMediaStreamCommand command);
     Optional<SecurityAlarm> handle(TriggerTamperingAlarmCommand command);
     void handle(ProcessMotionDetectionCommand command);
+    Optional<IoTDevice> handle(UpdateDoorStateCommand command);
 }

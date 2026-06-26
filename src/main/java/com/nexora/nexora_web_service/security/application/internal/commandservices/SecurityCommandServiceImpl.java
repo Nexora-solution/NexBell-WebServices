@@ -109,4 +109,13 @@ public class SecurityCommandServiceImpl implements SecurityCommandService {
         alarm.acknowledge();
         alarmRepository.save(alarm);
     }
+
+    @Override
+    public Optional<IoTDevice> handle(UpdateDoorStateCommand command) {
+        var device = deviceRepository.findByDeviceCode("DEV-ESP32-DOOR01")
+                .or(() -> deviceRepository.findAll().stream().findFirst())
+                .orElseGet(() -> deviceRepository.save(new IoTDevice("DEV-ESP32-DOOR01")));
+        device.updateDoorState(command.state());
+        return Optional.of(deviceRepository.save(device));
+    }
 }

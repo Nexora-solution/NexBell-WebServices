@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import com.nexora.nexora_web_service.security.infrastructure.persistence.jpa.repositories.DoorCommandRepository;
+import com.nexora.nexora_web_service.security.infrastructure.persistence.jpa.repositories.IoTDeviceRepository;
+import com.nexora.nexora_web_service.security.interfaces.rest.resources.DoorPhysicalStateResource;
 import com.nexora.nexora_web_service.security.interfaces.rest.resources.DoorStatusResource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,11 +23,28 @@ public class DoorControlController {
 
     private final SecurityCommandService securityCommandService;
     private final DoorCommandRepository doorCommandRepository;
+    private final IoTDeviceRepository deviceRepository;
 
     public DoorControlController(SecurityCommandService securityCommandService,
-                                 DoorCommandRepository doorCommandRepository) {
+                                 DoorCommandRepository doorCommandRepository,
+                                 IoTDeviceRepository deviceRepository) {
         this.securityCommandService = securityCommandService;
         this.doorCommandRepository = doorCommandRepository;
+        this.deviceRepository = deviceRepository;
+    }
+
+    @GetMapping("/physical-state")
+    @Operation(summary = "Get the current physical door state (OPEN/CLOSED) from the MC38 magnetic sensor")
+    public ResponseEntity<DoorPhysicalStateResource> getPhysicalState() {
+        var deviceOpt = deviceRepository.findByDeviceCode("DEV-ESP32-DOOR01")
+                .or(() -> deviceRepository.findAll().stream().findFirst());
+        var resource = deviceOpt
+                .map(d -> new DoorPhysicalStateResource(
+                        d.getDoorState(),
+                        d.getDoorStateChangedAt(),
+                        "ONLINE".equals(d.getStatus())))
+                .orElse(new DoorPhysicalStateResource("CLOSED", null, false));
+        return ResponseEntity.ok(resource);
     }
 
     @GetMapping("/status")

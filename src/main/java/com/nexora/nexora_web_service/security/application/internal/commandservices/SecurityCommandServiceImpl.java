@@ -8,6 +8,7 @@ import com.nexora.nexora_web_service.security.domain.model.entities.IoTDevice;
 import com.nexora.nexora_web_service.security.domain.model.entities.SecurityAlarm;
 import com.nexora.nexora_web_service.security.domain.model.valueobjects.PermissionCode;
 import com.nexora.nexora_web_service.security.domain.model.valueobjects.SensorType;
+import com.nexora.nexora_web_service.security.domain.services.AlarmBroadcastGateway;
 import com.nexora.nexora_web_service.security.domain.services.IoTCommandGateway;
 import com.nexora.nexora_web_service.security.domain.services.SecurityCommandService;
 import com.nexora.nexora_web_service.security.infrastructure.persistence.jpa.repositories.AccessPolicyRepository;
@@ -29,17 +30,20 @@ public class SecurityCommandServiceImpl implements SecurityCommandService {
     private final IoTDeviceRepository deviceRepository;
     private final SecurityAlarmRepository alarmRepository;
     private final IoTCommandGateway commandGateway;
+    private final AlarmBroadcastGateway alarmBroadcastGateway;
 
     public SecurityCommandServiceImpl(AccessPolicyRepository policyRepository,
                                        DoorCommandRepository doorCommandRepository,
                                        IoTDeviceRepository deviceRepository,
                                        SecurityAlarmRepository alarmRepository,
-                                       IoTCommandGateway commandGateway) {
+                                       IoTCommandGateway commandGateway,
+                                       AlarmBroadcastGateway alarmBroadcastGateway) {
         this.policyRepository = policyRepository;
         this.doorCommandRepository = doorCommandRepository;
         this.deviceRepository = deviceRepository;
         this.alarmRepository = alarmRepository;
         this.commandGateway = commandGateway;
+        this.alarmBroadcastGateway = alarmBroadcastGateway;
     }
 
     @PostConstruct
@@ -100,7 +104,9 @@ public class SecurityCommandServiceImpl implements SecurityCommandService {
     public Optional<SecurityAlarm> handle(TriggerTamperingAlarmCommand command) {
         SensorType type = SensorType.valueOf(command.sensorType());
         var alarm = new SecurityAlarm(type);
-        return Optional.of(alarmRepository.save(alarm));
+        var saved = alarmRepository.save(alarm);
+        alarmBroadcastGateway.publishAlarm(saved); // push to the doorman web in real time (SSE)
+        return Optional.of(saved);
     }
 
     @Override

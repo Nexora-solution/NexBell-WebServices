@@ -10,5 +10,7 @@ public record UpdateResidentContactResource(
     @Schema(description = "New contact phone number")
     String phone,
     @Schema(description = "New apartment code (e.g. 101, 202)")
-    String apartmentCode
+    String apartmentCode,
+    @Schema(description = "New profile photo as a base64 data URL")
+    String photoUrl
 ) {}

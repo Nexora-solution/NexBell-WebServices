@@ -45,12 +45,36 @@ public class SmtpCredentialMailService implements CredentialMailService {
             return;
         }
 
+        send(toPersonalEmail, subject, body);
+    }
+
+    @Override
+    public void sendResidentCredentials(String toPersonalEmail, String loginEmail, String password, String buildingName, String apartmentCode) {
+        String where = buildingName + (apartmentCode == null || apartmentCode.isBlank() ? "" : " — Depto. " + apartmentCode);
+        String subject = "Tus credenciales NexBell — " + where;
+        String body = "Hola,\n\n"
+                + "Estas son tus credenciales para iniciar sesión en NexBell (" + where + "):\n\n"
+                + "  Usuario:     " + loginEmail + "\n"
+                + "  Contraseña:  " + password + "\n\n"
+                + "Al iniciar sesión por primera vez en la app, registra tu nombre y teléfono\n"
+                + "para activar tu departamento. Por seguridad, cambia tu contraseña.\n\n"
+                + "— Equipo NexBell";
+
+        if (!enabled) {
+            log.info("[mail disabled] Credenciales para {}\nAsunto: {}\n{}", toPersonalEmail, subject, body);
+            return;
+        }
+
+        send(toPersonalEmail, subject, body);
+    }
+
+    private void send(String to, String subject, String body) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
-        message.setTo(toPersonalEmail);
+        message.setTo(to);
         message.setSubject(subject);
         message.setText(body);
         mailSender.send(message);
-        log.info("Credenciales enviadas a {}", toPersonalEmail);
+        log.info("Credenciales enviadas a {}", to);
     }
 }

@@ -45,7 +45,8 @@ public class DirectoryQueryController {
                 profile.getContact().email(),
                 profile.getContact().phone(),
                 null,
-                id
+                id,
+                profile.getPhotoUrl()
         ))).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
@@ -74,7 +75,8 @@ public class DirectoryQueryController {
                 profile.getContact().email(),
                 profile.getContact().phone(),
                 apartment.getCode().code(),
-                apartment.getId()
+                apartment.getId(),
+                profile.getPhotoUrl()
         ))).orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

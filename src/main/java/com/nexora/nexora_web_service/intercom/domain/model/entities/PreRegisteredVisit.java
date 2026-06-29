@@ -20,6 +20,11 @@ public class PreRegisteredVisit extends AuditableModel {
     @Column(name = "visitor_document")
     private String visitorDocument;
 
+    // Visitor photo the resident attaches when pre-registering, as a base64
+    // data URL (same pattern as BuildingDirectory.imageUrl). Optional.
+    @Column(name = "visitor_photo_url", columnDefinition = "TEXT")
+    private String visitorPhotoUrl;
+
     @Column(name = "expected_at", nullable = false)
     private LocalDateTime expectedAt;
 
@@ -47,17 +52,26 @@ public class PreRegisteredVisit extends AuditableModel {
     }
 
     public PreRegisteredVisit(Long residentId, String visitorName, String visitorDocument, LocalDateTime expectedAt) {
-        this(residentId, visitorName, visitorDocument, expectedAt, "RESIDENT");
+        this(residentId, visitorName, visitorDocument, null, expectedAt, "RESIDENT");
     }
 
-    public PreRegisteredVisit(Long residentId, String visitorName, String visitorDocument, LocalDateTime expectedAt, String registeredBy) {
+    public PreRegisteredVisit(Long residentId, String visitorName, String visitorDocument, String visitorPhotoUrl, LocalDateTime expectedAt, String registeredBy) {
         this.residentId = residentId;
         this.visitorName = visitorName;
         this.visitorDocument = visitorDocument;
+        this.visitorPhotoUrl = visitorPhotoUrl;
         this.expectedAt = expectedAt;
         this.isActive = true;
         this.status = "PENDING";
         this.registeredBy = registeredBy != null ? registeredBy : "RESIDENT";
+    }
+
+    public String getVisitorPhotoUrl() {
+        return visitorPhotoUrl;
+    }
+
+    public void setVisitorPhotoUrl(String visitorPhotoUrl) {
+        this.visitorPhotoUrl = visitorPhotoUrl;
     }
 
     public Long getResidentId() {
@@ -100,9 +114,10 @@ public class PreRegisteredVisit extends AuditableModel {
         isActive = active;
     }
 
-    public void update(String visitorName, String visitorDocument, LocalDateTime expectedAt) {
+    public void update(String visitorName, String visitorDocument, String visitorPhotoUrl, LocalDateTime expectedAt) {
         this.visitorName = visitorName;
         this.visitorDocument = visitorDocument;
+        this.visitorPhotoUrl = visitorPhotoUrl;
         this.expectedAt = expectedAt;
     }
 

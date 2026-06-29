@@ -28,6 +28,11 @@ public class ResidentDirectoryProfile extends AuditableModel {
     })
     private ContactChannel contact;
 
+    // Resident's profile photo as a base64 data URL (optional, set from the
+    // mobile app). TEXT so it fits.
+    @Column(name = "photo_url", columnDefinition = "TEXT")
+    private String photoUrl;
+
     public ResidentDirectoryProfile() {}
 
     public ResidentDirectoryProfile(Long userId, String fullName, ResidentDocument document, ContactChannel contact) {
@@ -71,5 +76,13 @@ public class ResidentDirectoryProfile extends AuditableModel {
 
     public void updateContact(ContactChannel contact) {
         this.contact = contact;
+    }
+
+    public String getPhotoUrl() {
+        return photoUrl;
+    }
+
+    public void setPhotoUrl(String photoUrl) {
+        this.photoUrl = photoUrl;
     }
 }

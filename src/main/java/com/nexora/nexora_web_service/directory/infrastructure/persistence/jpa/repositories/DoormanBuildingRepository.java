@@ -9,4 +9,8 @@ import java.util.Optional;
 @Repository
 public interface DoormanBuildingRepository extends JpaRepository<DoormanBuilding, Long> {
     Optional<DoormanBuilding> findByUserId(Long userId);
+
+    // Used by the credential-reclaim flow: a doorman is uniquely identified by
+    // their building + the personal email they registered at contract time.
+    Optional<DoormanBuilding> findByBuildingIdAndPersonalEmail(Long buildingId, String personalEmail);
 }

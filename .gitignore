@@ -7,6 +7,9 @@ target/
 # Firebase service account credentials (real project secrets — do not commit)
 src/main/resources/firebase-service-account.json
 
+# Local secrets override (SMTP / mail credentials — do not commit)
+application-local.properties
+
 ### IntelliJ IDEA ###
 .idea/modules.xml
 .idea/jarRepositories.xml

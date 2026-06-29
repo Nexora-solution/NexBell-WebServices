@@ -1,11 +1,18 @@
 package com.nexora.nexora_web_service.onboarding.interfaces.rest.transform;
 
+import com.nexora.nexora_web_service.directory.domain.model.entities.ResidentDirectoryProfile;
+import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.ApartmentRepository;
+import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.BuildingDirectoryRepository;
+import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.ResidentDirectoryRepository;
 import com.nexora.nexora_web_service.onboarding.domain.model.commands.ClaimDoormanCredentialsCommand;
+import com.nexora.nexora_web_service.onboarding.domain.model.commands.ClaimResidentCredentialsCommand;
 import com.nexora.nexora_web_service.onboarding.domain.model.commands.ProvisionContractCommand;
 import com.nexora.nexora_web_service.onboarding.domain.model.valueobjects.ContractProvisionResult;
 import com.nexora.nexora_web_service.onboarding.domain.model.valueobjects.GeneratedCredential;
+import com.nexora.nexora_web_service.onboarding.domain.model.valueobjects.ResidentClaimOutcome;
 import com.nexora.nexora_web_service.onboarding.domain.services.OnboardingCommandService;
 import com.nexora.nexora_web_service.onboarding.interfaces.rest.resources.ClaimCredentialsResource;
+import com.nexora.nexora_web_service.onboarding.interfaces.rest.resources.ClaimResidentCredentialsResource;
 import com.nexora.nexora_web_service.onboarding.interfaces.rest.resources.ContractProvisionResultResource;
 import com.nexora.nexora_web_service.onboarding.interfaces.rest.resources.CredentialResource;
 import com.nexora.nexora_web_service.onboarding.interfaces.rest.resources.ProvisionContractResource;
@@ -25,9 +32,18 @@ import java.util.Map;
 public class OnboardingController {
 
     private final OnboardingCommandService onboardingCommandService;
+    private final BuildingDirectoryRepository buildings;
+    private final ApartmentRepository apartments;
+    private final ResidentDirectoryRepository residents;
 
-    public OnboardingController(OnboardingCommandService onboardingCommandService) {
+    public OnboardingController(OnboardingCommandService onboardingCommandService,
+                                BuildingDirectoryRepository buildings,
+                                ApartmentRepository apartments,
+                                ResidentDirectoryRepository residents) {
         this.onboardingCommandService = onboardingCommandService;
+        this.buildings = buildings;
+        this.apartments = apartments;
+        this.residents = residents;
     }
 
     @PostMapping("/contracts")
@@ -63,6 +79,61 @@ public class OnboardingController {
                 "sent", true,
                 "message", "Te enviamos tus credenciales a tu correo personal."
         ));
+    }
+
+    @PostMapping("/credentials/claim-resident")
+    @Operation(summary = "A resident reclaims their credentials by building + apartment + personal email")
+    public ResponseEntity<Map<String, Object>> claimResident(@Valid @RequestBody ClaimResidentCredentialsResource resource) {
+        var command = new ClaimResidentCredentialsCommand(resource.buildingName(), resource.apartmentCode(), resource.personalEmail());
+        ResidentClaimOutcome outcome = onboardingCommandService.handle(command);
+        return switch (outcome) {
+            case SENT -> ResponseEntity.ok(Map.of(
+                    "sent", true,
+                    "message", "Te enviamos tus credenciales a tu correo personal."
+            ));
+            case ALREADY_ACTIVE -> ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "sent", false,
+                    "message", "Este departamento ya fue activado. Si eres el residente, inicia sesión; si olvidaste tu contraseña usa 'Recuperar contraseña'."
+            ));
+            case NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "sent", false,
+                    "message", "No encontramos ese departamento en ese edificio. Revisa el nombre del edificio y el número de departamento."
+            ));
+        };
+    }
+
+    @GetMapping("/buildings")
+    @Operation(summary = "Public list of buildings for the mobile credential-request autocomplete")
+    public ResponseEntity<List<Map<String, Object>>> listBuildings() {
+        var result = buildings.findAll().stream()
+                .map(b -> Map.<String, Object>of(
+                        "id", b.getId(),
+                        "name", b.getName() == null ? "" : b.getName(),
+                        "district", b.getDistrict() == null ? "" : b.getDistrict()
+                ))
+                .toList();
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/buildings/{buildingId}/apartments")
+    @Operation(summary = "Public list of a building's apartments, flagging which are still claimable (pending)")
+    public ResponseEntity<List<Map<String, Object>>> listApartments(@PathVariable Long buildingId) {
+        var result = apartments.findByBuildingId(buildingId).stream()
+                .map(apt -> Map.<String, Object>of(
+                        "code", apt.getCode() == null ? "" : apt.getCode().code(),
+                        "claimable", isClaimable(apt.getResidentId())
+                ))
+                .toList();
+        return ResponseEntity.ok(result);
+    }
+
+    /** Claimable = the apartment has a resident profile that has not activated yet (no phone on file). */
+    private boolean isClaimable(Long residentProfileId) {
+        if (residentProfileId == null) return false;
+        return residents.findById(residentProfileId)
+                .map(ResidentDirectoryProfile::getContact)
+                .map(contact -> contact.phone() == null || contact.phone().isBlank())
+                .orElse(false);
     }
 
     private ContractProvisionResultResource toResource(ContractProvisionResult result) {

@@ -49,7 +49,8 @@ public class ResidentsController {
                 profile.getContact().email(),
                 profile.getContact().phone(),
                 apartmentCode,
-                apartmentId
+                apartmentId,
+                profile.getPhotoUrl()
         ));
     }
 
@@ -69,6 +70,11 @@ public class ResidentsController {
         String email = resource.email() != null ? resource.email() : profile.getContact().email();
         String phone = resource.phone() != null ? resource.phone() : profile.getContact().phone();
         profile.setContact(new ContactChannel(email, phone));
+
+        // Update profile photo if provided
+        if (resource.photoUrl() != null) {
+            profile.setPhotoUrl(resource.photoUrl());
+        }
 
         residentDirectoryRepository.save(profile);
 

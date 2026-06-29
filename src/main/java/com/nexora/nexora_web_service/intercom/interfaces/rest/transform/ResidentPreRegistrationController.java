@@ -87,6 +87,7 @@ public class ResidentPreRegistrationController {
             Map.entry("id", v.getId()),
             Map.entry("visitorName", v.getVisitorName()),
             Map.entry("visitorDocument", v.getVisitorDocument() != null ? v.getVisitorDocument() : ""),
+            Map.entry("visitorPhotoUrl", v.getVisitorPhotoUrl() != null ? v.getVisitorPhotoUrl() : ""),
             Map.entry("expectedAt", v.getExpectedAt()),
             Map.entry("isActive", v.isActive()),
             Map.entry("status", v.getStatus()),
@@ -105,6 +106,7 @@ public class ResidentPreRegistrationController {
                 resource.residentId(),
                 resource.visitorName(),
                 resource.visitorDocument(),
+                resource.visitorPhotoUrl(),
                 resource.expectedAt(),
                 resource.registeredBy()
         );
@@ -120,6 +122,7 @@ public class ResidentPreRegistrationController {
                 id,
                 resource.visitorName(),
                 resource.visitorDocument(),
+                resource.visitorPhotoUrl(),
                 resource.expectedAt()
         );
         var visitOpt = commandService.handle(command);

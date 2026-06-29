@@ -130,6 +130,7 @@ public class IntercomCommandServiceImpl implements IntercomCommandService {
                 command.residentId(),
                 command.visitorName(),
                 command.visitorDocument(),
+                command.visitorPhotoUrl(),
                 command.expectedAt(),
                 command.registeredBy()
         );
@@ -140,7 +141,7 @@ public class IntercomCommandServiceImpl implements IntercomCommandService {
     public Optional<PreRegisteredVisit> handle(UpdatePreRegisteredVisitCommand command) {
         var visit = preRegisteredVisitRepository.findById(command.id())
                 .orElseThrow(() -> new IllegalArgumentException("Pre-registered visit not found"));
-        visit.update(command.visitorName(), command.visitorDocument(), command.expectedAt());
+        visit.update(command.visitorName(), command.visitorDocument(), command.visitorPhotoUrl(), command.expectedAt());
         return Optional.of(preRegisteredVisitRepository.save(visit));
     }
 

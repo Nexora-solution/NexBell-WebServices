@@ -4,21 +4,29 @@ import com.nexora.nexora_web_service.directory.domain.model.commands.AssignResid
 import com.nexora.nexora_web_service.directory.domain.model.commands.CreateApartmentCommand;
 import com.nexora.nexora_web_service.directory.domain.model.commands.CreateBuildingCommand;
 import com.nexora.nexora_web_service.directory.domain.model.entities.DoormanBuilding;
+import com.nexora.nexora_web_service.directory.domain.model.valueobjects.ApartmentCode;
 import com.nexora.nexora_web_service.directory.domain.model.valueobjects.ContactChannel;
 import com.nexora.nexora_web_service.directory.domain.model.valueobjects.ResidentDocument;
 import com.nexora.nexora_web_service.directory.domain.services.DirectoryCommandService;
+import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.ApartmentRepository;
 import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.BuildingDirectoryRepository;
 import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.DoormanBuildingRepository;
+import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.ResidentDirectoryRepository;
 import com.nexora.nexora_web_service.iam.domain.model.commands.ConfirmPasswordResetCommand;
 import com.nexora.nexora_web_service.iam.domain.model.commands.RegisterUserCommand;
 import com.nexora.nexora_web_service.iam.domain.model.commands.RequestPasswordResetCommand;
 import com.nexora.nexora_web_service.iam.domain.model.entities.UserAccount;
+import com.nexora.nexora_web_service.iam.domain.model.queries.GetUserAccountByEmailQuery;
+import com.nexora.nexora_web_service.iam.domain.model.valueobjects.EmailAddress;
 import com.nexora.nexora_web_service.iam.domain.model.valueobjects.RoleName;
 import com.nexora.nexora_web_service.iam.domain.services.UserAccountCommandService;
+import com.nexora.nexora_web_service.iam.domain.services.UserAccountQueryService;
 import com.nexora.nexora_web_service.onboarding.domain.model.commands.ClaimDoormanCredentialsCommand;
+import com.nexora.nexora_web_service.onboarding.domain.model.commands.ClaimResidentCredentialsCommand;
 import com.nexora.nexora_web_service.onboarding.domain.model.commands.ProvisionContractCommand;
 import com.nexora.nexora_web_service.onboarding.domain.model.valueobjects.ContractProvisionResult;
 import com.nexora.nexora_web_service.onboarding.domain.model.valueobjects.GeneratedCredential;
+import com.nexora.nexora_web_service.onboarding.domain.model.valueobjects.ResidentClaimOutcome;
 import com.nexora.nexora_web_service.onboarding.domain.services.CredentialFactory;
 import com.nexora.nexora_web_service.onboarding.domain.services.CredentialMailService;
 import com.nexora.nexora_web_service.onboarding.domain.services.OnboardingCommandService;
@@ -36,20 +44,29 @@ public class OnboardingCommandServiceImpl implements OnboardingCommandService {
     private static final Logger log = LoggerFactory.getLogger(OnboardingCommandServiceImpl.class);
 
     private final UserAccountCommandService userAccounts;
+    private final UserAccountQueryService userAccountsQuery;
     private final DirectoryCommandService directory;
     private final DoormanBuildingRepository doormanBuildings;
     private final BuildingDirectoryRepository buildings;
+    private final ApartmentRepository apartments;
+    private final ResidentDirectoryRepository residents;
     private final CredentialMailService mail;
 
     public OnboardingCommandServiceImpl(UserAccountCommandService userAccounts,
+                                        UserAccountQueryService userAccountsQuery,
                                         DirectoryCommandService directory,
                                         DoormanBuildingRepository doormanBuildings,
                                         BuildingDirectoryRepository buildings,
+                                        ApartmentRepository apartments,
+                                        ResidentDirectoryRepository residents,
                                         CredentialMailService mail) {
         this.userAccounts = userAccounts;
+        this.userAccountsQuery = userAccountsQuery;
         this.directory = directory;
         this.doormanBuildings = doormanBuildings;
         this.buildings = buildings;
+        this.apartments = apartments;
+        this.residents = residents;
         this.mail = mail;
     }
 
@@ -170,6 +187,54 @@ public class OnboardingCommandServiceImpl implements OnboardingCommandService {
         return true;
     }
 
+    @Override
+    @Transactional
+    public ResidentClaimOutcome handle(ClaimResidentCredentialsCommand command) {
+        // 1. Resolve the building by its exact name (case-insensitive). The mobile
+        //    autocomplete makes the typed name land exactly on a registered one.
+        var buildingOpt = buildings.findAll().stream()
+                .filter(b -> b.getName() != null && b.getName().equalsIgnoreCase(command.buildingName().trim()))
+                .findFirst();
+        if (buildingOpt.isEmpty()) {
+            log.info("Resident claim: no building named '{}'", command.buildingName());
+            return ResidentClaimOutcome.NOT_FOUND;
+        }
+        var building = buildingOpt.get();
+
+        // 2. Resolve the apartment by building + code, and make sure it has a resident.
+        var apartmentOpt = apartments.findByBuildingIdAndCode(building.getId(), new ApartmentCode(command.apartmentCode().trim()));
+        if (apartmentOpt.isEmpty() || apartmentOpt.get().getResidentId() == null) {
+            log.info("Resident claim: no apartment {} (with resident) in building {}", command.apartmentCode(), building.getId());
+            return ResidentClaimOutcome.NOT_FOUND;
+        }
+        var apartment = apartmentOpt.get();
+
+        // 3. The resident profile carries the login email and the pending/active marker.
+        var profileOpt = residents.findById(apartment.getResidentId());
+        if (profileOpt.isEmpty() || profileOpt.get().getContact() == null) return ResidentClaimOutcome.NOT_FOUND;
+        var profile = profileOpt.get();
+
+        // SECURITY GATE: a phone on file means the resident already activated this
+        // apartment on first login, so it can no longer be claimed by anyone else.
+        String phone = profile.getContact().phone();
+        if (phone != null && !phone.isBlank()) {
+            log.info("Resident claim rejected: apartment {} in building {} is already active", command.apartmentCode(), building.getId());
+            return ResidentClaimOutcome.ALREADY_ACTIVE;
+        }
+
+        String loginEmail = profile.getContact().email();
+        if (loginEmail == null || loginEmail.isBlank()) return ResidentClaimOutcome.NOT_FOUND;
+
+        // 4. Resend the SAME password generated at contract time — this is a
+        //    delivery mechanism, not a reset, so re-claiming never changes it.
+        var account = userAccountsQuery.handle(new GetUserAccountByEmailQuery(new EmailAddress(loginEmail)));
+        if (account.isEmpty()) return ResidentClaimOutcome.NOT_FOUND;
+        String password = account.get().getPassword().passwordHash();
+
+        safeSendResident(command.personalEmail(), loginEmail, password, building.getName(), command.apartmentCode().trim());
+        return ResidentClaimOutcome.SENT;
+    }
+
     /** Register a user; returns its id, or null if it already exists (additive, never overwrites). */
     private Long registerUser(String email, String password, RoleName role) {
         try {
@@ -187,6 +252,14 @@ public class OnboardingCommandServiceImpl implements OnboardingCommandService {
             mail.sendDoormanCredentials(personalEmail, loginEmail, password, buildingName);
         } catch (Exception e) {
             log.error("Failed to email credentials to {}: {}", personalEmail, e.getMessage());
+        }
+    }
+
+    private void safeSendResident(String personalEmail, String loginEmail, String password, String buildingName, String apartmentCode) {
+        try {
+            mail.sendResidentCredentials(personalEmail, loginEmail, password, buildingName, apartmentCode);
+        } catch (Exception e) {
+            log.error("Failed to email resident credentials to {}: {}", personalEmail, e.getMessage());
         }
     }
 }

@@ -63,17 +63,21 @@ public class BuildingsController {
     @PostMapping("/{id}/doormen")
     @Operation(summary = "Assign a doorman (IAM user) to a building")
     public ResponseEntity<Void> assignDoorman(@PathVariable Long id,
-                                              @RequestBody Map<String, Long> body) {
-        Long userId = body.get("userId");
-        if (userId == null) return ResponseEntity.badRequest().build();
+                                              @RequestBody Map<String, Object> body) {
+        Object rawUserId = body.get("userId");
+        if (rawUserId == null) return ResponseEntity.badRequest().build();
+        Long userId = Long.valueOf(rawUserId.toString());
         if (!buildingDirectoryRepository.existsById(id)) return ResponseEntity.notFound().build();
-        var existing = doormanBuildingRepository.findByUserId(userId);
-        if (existing.isPresent()) {
-            existing.get().setBuildingId(id);
-            doormanBuildingRepository.save(existing.get());
-        } else {
-            doormanBuildingRepository.save(new DoormanBuilding(userId, id));
-        }
+
+        String personalEmail = body.get("personalEmail") == null ? null : body.get("personalEmail").toString();
+        String loginEmail = body.get("loginEmail") == null ? null : body.get("loginEmail").toString();
+
+        var doorman = doormanBuildingRepository.findByUserId(userId)
+                .orElseGet(() -> new DoormanBuilding(userId, id));
+        doorman.setBuildingId(id);
+        if (personalEmail != null) doorman.setPersonalEmail(personalEmail);
+        if (loginEmail != null) doorman.setLoginEmail(loginEmail);
+        doormanBuildingRepository.save(doorman);
         return ResponseEntity.ok().build();
     }
 }

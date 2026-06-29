@@ -46,6 +46,12 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- Mail: deliver generated credentials to doormen -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- PostgreSQL Connector -->
         <dependency>
             <groupId>org.postgresql</groupId>

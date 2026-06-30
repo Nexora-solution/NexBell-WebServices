@@ -44,9 +44,11 @@ public class AuditQueryServiceImpl implements AuditQueryService {
     @Override
     public List<AccessTimelineEntry> handle(GetHardwareLogsQuery query) {
         return timelineRepository.findAll().stream()
-                .filter(entry -> entry.getEventDescription().toLowerCase().contains("door") ||
-                                 entry.getEventDescription().toLowerCase().contains("unlock") ||
-                                 entry.getEventDescription().toLowerCase().contains("lock"))
+                .filter(entry -> {
+                    String d = entry.getEventDescription().toLowerCase();
+                    return d.contains("door") || d.contains("unlock") || d.contains("lock") ||
+                           d.contains("puerta") || d.contains("movimiento");
+                })
                 .collect(Collectors.toList());
     }
 }

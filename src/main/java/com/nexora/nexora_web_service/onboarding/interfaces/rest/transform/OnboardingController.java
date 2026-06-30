@@ -1,9 +1,6 @@
 package com.nexora.nexora_web_service.onboarding.interfaces.rest.transform;
 
-import com.nexora.nexora_web_service.directory.domain.model.entities.ResidentDirectoryProfile;
-import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.ApartmentRepository;
-import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.BuildingDirectoryRepository;
-import com.nexora.nexora_web_service.directory.infrastructure.persistence.jpa.repositories.ResidentDirectoryRepository;
+import com.nexora.nexora_web_service.onboarding.application.internal.outboundservices.acl.ExternalDirectoryService;
 import com.nexora.nexora_web_service.onboarding.domain.model.commands.ClaimDoormanCredentialsCommand;
 import com.nexora.nexora_web_service.onboarding.domain.model.commands.ClaimResidentCredentialsCommand;
 import com.nexora.nexora_web_service.onboarding.domain.model.commands.ProvisionContractCommand;
@@ -32,18 +29,12 @@ import java.util.Map;
 public class OnboardingController {
 
     private final OnboardingCommandService onboardingCommandService;
-    private final BuildingDirectoryRepository buildings;
-    private final ApartmentRepository apartments;
-    private final ResidentDirectoryRepository residents;
+    private final ExternalDirectoryService directory;
 
     public OnboardingController(OnboardingCommandService onboardingCommandService,
-                                BuildingDirectoryRepository buildings,
-                                ApartmentRepository apartments,
-                                ResidentDirectoryRepository residents) {
+                                ExternalDirectoryService directory) {
         this.onboardingCommandService = onboardingCommandService;
-        this.buildings = buildings;
-        this.apartments = apartments;
-        this.residents = residents;
+        this.directory = directory;
     }
 
     @PostMapping("/contracts")
@@ -105,11 +96,11 @@ public class OnboardingController {
     @GetMapping("/buildings")
     @Operation(summary = "Public list of buildings for the mobile credential-request autocomplete")
     public ResponseEntity<List<Map<String, Object>>> listBuildings() {
-        var result = buildings.findAll().stream()
+        var result = directory.listBuildings().stream()
                 .map(b -> Map.<String, Object>of(
-                        "id", b.getId(),
-                        "name", b.getName() == null ? "" : b.getName(),
-                        "district", b.getDistrict() == null ? "" : b.getDistrict()
+                        "id", b.id(),
+                        "name", b.name(),
+                        "district", b.district()
                 ))
                 .toList();
         return ResponseEntity.ok(result);
@@ -118,22 +109,13 @@ public class OnboardingController {
     @GetMapping("/buildings/{buildingId}/apartments")
     @Operation(summary = "Public list of a building's apartments, flagging which are still claimable (pending)")
     public ResponseEntity<List<Map<String, Object>>> listApartments(@PathVariable Long buildingId) {
-        var result = apartments.findByBuildingId(buildingId).stream()
+        var result = directory.listApartments(buildingId).stream()
                 .map(apt -> Map.<String, Object>of(
-                        "code", apt.getCode() == null ? "" : apt.getCode().code(),
-                        "claimable", isClaimable(apt.getResidentId())
+                        "code", apt.code(),
+                        "claimable", apt.claimable()
                 ))
                 .toList();
         return ResponseEntity.ok(result);
-    }
-
-    /** Claimable = the apartment has a resident profile that has not activated yet (no phone on file). */
-    private boolean isClaimable(Long residentProfileId) {
-        if (residentProfileId == null) return false;
-        return residents.findById(residentProfileId)
-                .map(ResidentDirectoryProfile::getContact)
-                .map(contact -> contact.phone() == null || contact.phone().isBlank())
-                .orElse(false);
     }
 
     private ContractProvisionResultResource toResource(ContractProvisionResult result) {

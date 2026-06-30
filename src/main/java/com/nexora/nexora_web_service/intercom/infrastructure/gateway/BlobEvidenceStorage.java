@@ -15,6 +15,6 @@ public class BlobEvidenceStorage implements EvidenceStorage {
     @Override
     public String save(String filename, InputStream data) {
         log.info("Saving evidence media file '{}' to Blob Storage...", filename);
-        return "https://blob.nexora.com/evidence/" + filename;
+        return "https://blob.nexbell.app/evidence/" + filename;
     }
 }

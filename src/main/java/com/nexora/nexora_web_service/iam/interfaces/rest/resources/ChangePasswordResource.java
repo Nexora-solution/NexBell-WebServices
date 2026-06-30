@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
 public record ChangePasswordResource(
-    @Schema(description = "User's email address", example = "user@nexora.com")
+    @Schema(description = "User's email address", example = "user@nexbell.app")
     @NotBlank String email,
     @Schema(description = "User's current password", example = "oldPassword123")
     @NotBlank String oldPassword,

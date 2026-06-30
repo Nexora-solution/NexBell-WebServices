@@ -61,4 +61,14 @@ public class JwtTokenIssuer implements TokenIssuer {
                 .getPayload()
                 .getSubject();
     }
+
+    @Override
+    public String getRoleFromToken(String jwt) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(jwt)
+                .getPayload()
+                .get("role", String.class);
+    }
 }

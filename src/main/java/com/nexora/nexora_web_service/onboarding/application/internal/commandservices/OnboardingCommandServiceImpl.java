@@ -225,13 +225,15 @@ public class OnboardingCommandServiceImpl implements OnboardingCommandService {
         String loginEmail = profile.getContact().email();
         if (loginEmail == null || loginEmail.isBlank()) return ResidentClaimOutcome.NOT_FOUND;
 
-        // 4. Resend the SAME password generated at contract time — this is a
-        //    delivery mechanism, not a reset, so re-claiming never changes it.
-        var account = userAccountsQuery.handle(new GetUserAccountByEmailQuery(new EmailAddress(loginEmail)));
-        if (account.isEmpty()) return ResidentClaimOutcome.NOT_FOUND;
-        String password = account.get().getPassword().passwordHash();
+        // 4. Re-issue a fresh password (the original is hashed and cannot be recovered)
+        //    and email it to the resident's personal address.
+        String newPassword = CredentialFactory.residentPassword();
+        String token = userAccounts.handle(new RequestPasswordResetCommand(loginEmail));
+        if (token == null || token.isBlank()) return ResidentClaimOutcome.NOT_FOUND;
+        boolean reset = userAccounts.handle(new ConfirmPasswordResetCommand(token, newPassword));
+        if (!reset) return ResidentClaimOutcome.NOT_FOUND;
 
-        safeSendResident(command.personalEmail(), loginEmail, password, building.getName(), command.apartmentCode().trim());
+        safeSendResident(command.personalEmail(), loginEmail, newPassword, building.getName(), command.apartmentCode().trim());
         return ResidentClaimOutcome.SENT;
     }
 

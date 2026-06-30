@@ -1,5 +1,7 @@
 package com.nexora.nexora_web_service.security.application.internal.commandservices;
 
+import com.nexora.nexora_web_service.audit.domain.model.entities.AccessTimelineEntry;
+import com.nexora.nexora_web_service.audit.infrastructure.persistence.jpa.repositories.AccessTimelineEntryRepository;
 import com.nexora.nexora_web_service.iam.domain.model.valueobjects.RoleName;
 import com.nexora.nexora_web_service.security.domain.model.commands.*;
 import com.nexora.nexora_web_service.security.domain.model.entities.AccessPolicy;
@@ -31,19 +33,22 @@ public class SecurityCommandServiceImpl implements SecurityCommandService {
     private final SecurityAlarmRepository alarmRepository;
     private final IoTCommandGateway commandGateway;
     private final AlarmBroadcastGateway alarmBroadcastGateway;
+    private final AccessTimelineEntryRepository timelineRepository;
 
     public SecurityCommandServiceImpl(AccessPolicyRepository policyRepository,
                                        DoorCommandRepository doorCommandRepository,
                                        IoTDeviceRepository deviceRepository,
                                        SecurityAlarmRepository alarmRepository,
                                        IoTCommandGateway commandGateway,
-                                       AlarmBroadcastGateway alarmBroadcastGateway) {
+                                       AlarmBroadcastGateway alarmBroadcastGateway,
+                                       AccessTimelineEntryRepository timelineRepository) {
         this.policyRepository = policyRepository;
         this.doorCommandRepository = doorCommandRepository;
         this.deviceRepository = deviceRepository;
         this.alarmRepository = alarmRepository;
         this.commandGateway = commandGateway;
         this.alarmBroadcastGateway = alarmBroadcastGateway;
+        this.timelineRepository = timelineRepository;
     }
 
     @PostConstruct
@@ -106,6 +111,8 @@ public class SecurityCommandServiceImpl implements SecurityCommandService {
         var alarm = new SecurityAlarm(type);
         var saved = alarmRepository.save(alarm);
         alarmBroadcastGateway.publishAlarm(saved); // push to the doorman web in real time (SSE)
+        // Record it in the activity feed (recent activity on the dashboard).
+        timelineRepository.save(new AccessTimelineEntry("Movimiento detectado en la puerta"));
         return Optional.of(saved);
     }
 
@@ -121,7 +128,16 @@ public class SecurityCommandServiceImpl implements SecurityCommandService {
         var device = deviceRepository.findByDeviceCode("DEV-ESP32-DOOR01")
                 .or(() -> deviceRepository.findAll().stream().findFirst())
                 .orElseGet(() -> deviceRepository.save(new IoTDevice("DEV-ESP32-DOOR01")));
+        String oldState = device.getDoorState();
         device.updateDoorState(command.state());
-        return Optional.of(deviceRepository.save(device));
+        var saved = deviceRepository.save(device);
+        // Only record a hardware-log entry when the physical state actually changes,
+        // so the activity feed shows a clean open/close history (not every reading).
+        String newState = saved.getDoorState();
+        if (newState != null && !newState.equalsIgnoreCase(oldState)) {
+            String desc = "OPEN".equalsIgnoreCase(newState) ? "La puerta se abrió" : "La puerta se cerró";
+            timelineRepository.save(new AccessTimelineEntry(desc));
+        }
+        return Optional.of(saved);
     }
 }

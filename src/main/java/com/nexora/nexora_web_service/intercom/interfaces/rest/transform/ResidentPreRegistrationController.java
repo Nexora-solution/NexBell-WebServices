@@ -50,13 +50,15 @@ public class ResidentPreRegistrationController {
     }
 
     @GetMapping
-    @Operation(summary = "List pre-registered visits, optionally filtered by building")
+    @Operation(summary = "List pre-registered visits, optionally filtered by building or resident")
     public ResponseEntity<List<Map<String, Object>>> getAllPreRegisteredVisits(
-            @RequestParam(required = false) Long buildingId) {
+            @RequestParam(required = false) Long buildingId,
+            @RequestParam(required = false) Long residentId) {
         var visits = preRegisteredVisitRepository.findAllByOrderByCreatedAtDesc();
         var result = visits.stream()
             .map(this::toEnrichedMap)
             .filter(v -> buildingId == null || buildingId.equals(v.get("buildingId")))
+            .filter(v -> residentId == null || residentId.equals(v.get("residentId")))
             .toList();
         return ResponseEntity.ok(result);
     }

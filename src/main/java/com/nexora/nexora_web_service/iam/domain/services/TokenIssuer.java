@@ -6,4 +6,5 @@ public interface TokenIssuer {
     String issueAccessToken(UserAccount account);
     boolean validate(String jwt);
     String getEmailFromToken(String jwt);
+    String getRoleFromToken(String jwt);
 }

@@ -7,6 +7,7 @@ import com.nexora.nexora_web_service.security.interfaces.rest.resources.DoorComm
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.nexora.nexora_web_service.security.infrastructure.persistence.jpa.repositories.DoorCommandRepository;
 import com.nexora.nexora_web_service.security.infrastructure.persistence.jpa.repositories.IoTDeviceRepository;
 import com.nexora.nexora_web_service.security.interfaces.rest.resources.DoorPhysicalStateResource;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/security/door")
 @Tag(name = "Door Control", description = "Endpoints to lock/unlock physical doors")
+@PreAuthorize("hasRole('DOORMAN')")
 public class DoorControlController {
 
     private final SecurityCommandService securityCommandService;

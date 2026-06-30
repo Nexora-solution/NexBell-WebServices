@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -29,10 +30,38 @@ public class WebSecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // CORS preflight: never authenticate OPTIONS requests.
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                // --- Public: authentication & password recovery ---
                 .requestMatchers("/api/iam/register", "/api/iam/login", "/api/iam/refresh", "/api/iam/password/**").permitAll()
+
+                // --- Public: onboarding (contract provisioning + credential claim + mobile lookups) ---
+                .requestMatchers("/api/onboarding/**").permitAll()
+
+                // --- Public: building catalog (used in pre-login building selector, no token yet) ---
+                .requestMatchers(HttpMethod.GET, "/api/directory/buildings").permitAll()
+
+                // --- Public: API docs ---
                 .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                .requestMatchers("/h2-console/**").permitAll()
-                .anyRequest().permitAll() // Wait, let's permit all for developer ease so they don't hit 403 on everything else if they don't pass headers, but we keep filter to set security context if passed! This is very developer-friendly while still setting context.
+
+                // --- Public: IoT hardware ingress (edge/ESP32 -> backend, no JWT). DO NOT change without updating the edge. ---
+                .requestMatchers(HttpMethod.POST, "/api/security/iot/presence").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/security/iot/door-state").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/security/alarms/tampering").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/security/face/event").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/intercom/visit-requests").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/intercom/visit-requests/*/evidence").permitAll()
+
+                // --- Public: SSE / video streams (browser EventSource cannot send the Authorization header) ---
+                .requestMatchers(HttpMethod.GET, "/api/intercom/queue/stream").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/intercom/visit-requests/*/stream").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/intercom/video-stream", "/api/intercom/video-stream/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/security/alarms/stream").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/security/face/stream").permitAll()
+
+                // --- Everything else requires a valid JWT ---
+                .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

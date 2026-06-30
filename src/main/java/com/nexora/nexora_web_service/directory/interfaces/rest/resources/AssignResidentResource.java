@@ -11,7 +11,7 @@ public record AssignResidentResource(
     @NotBlank String fullName,
     @Schema(description = "Document identity number of the resident", example = "73849501")
     @NotBlank String documentNumber,
-    @Schema(description = "Resident's contact email address", example = "juan.perez@nexora.com")
+    @Schema(description = "Resident's contact email address", example = "juan.perez@nexbell.app")
     @NotBlank String email,
     @Schema(description = "Resident's contact phone number", example = "+51999888777")
     @NotBlank String phone

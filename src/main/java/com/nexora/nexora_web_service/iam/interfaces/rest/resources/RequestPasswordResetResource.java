@@ -5,6 +5,6 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 public record RequestPasswordResetResource(
-    @Schema(description = "Email address registered on Nexora", example = "user@nexora.com")
+    @Schema(description = "Email address registered on NexBell", example = "user@nexbell.app")
     @NotBlank @Email String email
 ) {}

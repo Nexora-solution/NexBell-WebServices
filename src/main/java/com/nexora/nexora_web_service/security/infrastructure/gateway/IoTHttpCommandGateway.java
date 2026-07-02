@@ -39,8 +39,20 @@ public class IoTHttpCommandGateway implements IoTCommandGateway {
     @Value("${nexbell.edge-service.port:3100}")
     private int edgeServicePort;
 
+    // Si se define (p.ej. una URL de túnel ngrok cuando el backend está en la
+    // nube), se usa tal cual. Si queda vacía, se arma http://host:puerto.
+    @Value("${nexbell.edge-service.base-url:}")
+    private String edgeServiceBaseUrl;
+
     public IoTHttpCommandGateway() {
         this.restTemplate = new RestTemplate();
+    }
+
+    private String edgeUrl(String path) {
+        String base = (edgeServiceBaseUrl != null && !edgeServiceBaseUrl.isBlank())
+                ? edgeServiceBaseUrl.replaceAll("/+$", "")
+                : String.format("http://%s:%d", edgeServiceHost, edgeServicePort);
+        return base + path;
     }
 
     @Override
@@ -58,7 +70,7 @@ public class IoTHttpCommandGateway implements IoTCommandGateway {
         // The edge service today only exposes a video stream switch (START_VIDEO/STOP_VIDEO).
         // There is no separate microphone-only command yet, so camera state drives the toggle.
         String action = camera ? "START_VIDEO" : "STOP_VIDEO";
-        String url = String.format("http://%s:%d/api/commands/capture", edgeServiceHost, edgeServicePort);
+        String url = edgeUrl("/api/commands/capture");
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -78,7 +90,7 @@ public class IoTHttpCommandGateway implements IoTCommandGateway {
     }
 
     private boolean forwardUnlock() {
-        String url = String.format("http://%s:%d/api/commands/unlock", edgeServiceHost, edgeServicePort);
+        String url = edgeUrl("/api/commands/unlock");
         try {
             ResponseEntity<String> response = restTemplate.postForEntity(url, null, String.class);
             if (response.getStatusCode() == HttpStatus.OK) {

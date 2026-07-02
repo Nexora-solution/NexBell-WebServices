@@ -30,9 +30,21 @@ public class FaceCommandGateway {
     @Value("${nexbell.edge-service.port:3100}")
     private int edgeServicePort;
 
+    // Si se define (p.ej. una URL de túnel ngrok cuando el backend está en la
+    // nube), se usa tal cual. Si queda vacía, se arma http://host:puerto.
+    @Value("${nexbell.edge-service.base-url:}")
+    private String edgeServiceBaseUrl;
+
+    private String edgeUrl(String path) {
+        String base = (edgeServiceBaseUrl != null && !edgeServiceBaseUrl.isBlank())
+                ? edgeServiceBaseUrl.replaceAll("/+$", "")
+                : String.format("http://%s:%d", edgeServiceHost, edgeServicePort);
+        return base + path;
+    }
+
     /** Sends a face-AI action to the ESP32 (via the edge). Returns false if the edge is unreachable. */
     public boolean send(String action) {
-        String url = String.format("http://%s:%d/api/commands/capture", edgeServiceHost, edgeServicePort);
+        String url = edgeUrl("/api/commands/capture");
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);

@@ -60,6 +60,9 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/security/alarms/stream").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/security/face/stream").permitAll()
 
+                // --- Public: WebSocket Media Hub (no authentication for local/prototype) ---
+                .requestMatchers("/ws/media", "/ws/media/**").permitAll()
+
                 // --- Everything else requires a valid JWT ---
                 .anyRequest().authenticated()
             )

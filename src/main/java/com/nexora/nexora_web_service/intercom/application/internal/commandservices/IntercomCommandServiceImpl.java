@@ -134,7 +134,9 @@ public class IntercomCommandServiceImpl implements IntercomCommandService {
                 command.expectedAt(),
                 command.registeredBy()
         );
-        return Optional.of(preRegisteredVisitRepository.save(visit));
+        var savedVisit = preRegisteredVisitRepository.save(visit);
+        realtimeQueueGateway.publishPreRegisteredUpdate(savedVisit);
+        return Optional.of(savedVisit);
     }
 
     @Override
@@ -142,14 +144,17 @@ public class IntercomCommandServiceImpl implements IntercomCommandService {
         var visit = preRegisteredVisitRepository.findById(command.id())
                 .orElseThrow(() -> new IllegalArgumentException("Pre-registered visit not found"));
         visit.update(command.visitorName(), command.visitorDocument(), command.visitorPhotoUrl(), command.expectedAt());
-        return Optional.of(preRegisteredVisitRepository.save(visit));
+        var savedVisit = preRegisteredVisitRepository.save(visit);
+        realtimeQueueGateway.publishPreRegisteredUpdate(savedVisit);
+        return Optional.of(savedVisit);
     }
 
     @Override
     public void handle(CancelPreRegisteredVisitCommand command) {
         preRegisteredVisitRepository.findById(command.id()).ifPresent(visit -> {
             visit.cancel();
-            preRegisteredVisitRepository.save(visit);
+            var savedVisit = preRegisteredVisitRepository.save(visit);
+            realtimeQueueGateway.publishPreRegisteredUpdate(savedVisit);
         });
     }
 
